@@ -87,7 +87,7 @@ public class Bestellung implements Serializable {
 	@ManyToOne
 	@JoinColumn(name = "kunde_fk", nullable = false, insertable = false, updatable = false)
 	@XmlTransient
-	private AbstractKunde kunde;
+	private Kunde kunde;
 	
 	@Transient
 	private URI kundeUri;
@@ -177,10 +177,10 @@ public class Bestellung implements Serializable {
 		return this;
 	}
 
-	public AbstractKunde getKunde() {
+	public Kunde getKunde() {
 		return kunde;
 	}
-	public void setKunde(AbstractKunde kunde) {
+	public void setKunde(Kunde kunde) {
 		this.kunde = kunde;
 	}
 

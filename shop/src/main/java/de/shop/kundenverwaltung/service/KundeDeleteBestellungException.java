@@ -9,7 +9,7 @@ import de.shop.kundenverwaltung.domain.Kunde;
  * Exception, die ausgel&ouml;st wird, wenn ein Kunde gel&ouml;scht werden soll, aber mindestens eine Bestellung hat
  */
 @ApplicationException(rollback = true)
-public class KundeDeleteBestellungException extends AbstractKundeServiceException {
+public class KundeDeleteBestellungException extends KundeServiceException {
 	private static final long serialVersionUID = 2237194289969083093L;
 	
 	private static final String MESSAGE_KEY = "kunde.deleteMitBestellung";

@@ -51,7 +51,7 @@ public class KundeService implements Serializable {
 			return kunde;
 		}
 
-//		final AbstractKunde tmp = findKundeByEmail(kunde.getEmail());  // Kein Aufruf als Business-Methode
+//		final Kunde tmp = findKundeByEmail(kunde.getEmail());  // Kein Aufruf als Business-Methode
 //		if (tmp != null) {
 //			throw new EmailExistsException(kunde.getEmail());
 //		}
@@ -68,7 +68,7 @@ public class KundeService implements Serializable {
 
 		// Pruefung, ob die Email-Adresse schon existiert
 		//Ohne Datenbankzugriffschicht sinnlos
-//		final AbstractKunde vorhandenerKunde = findKundeByEmail(kunde.getEmail());  // Kein Aufruf als Business-Methode
+//		final Kunde vorhandenerKunde = findKundeByEmail(kunde.getEmail());  // Kein Aufruf als Business-Methode
 //		if (vorhandenerKunde != null) {
 //			// Gibt es die Email-Adresse bei einem anderen, bereits vorhandenen Kunden?
 //			if (vorhandenerKunde.getId().longValue() != kunde.getId().longValue()) {
