@@ -13,7 +13,7 @@ import javax.inject.Inject;
 import org.jboss.logging.Logger;
 
 import de.shop.bestellverwaltung.domain.Bestellung;
-import de.shop.kundenverwaltung.domain.AbstractKunde;
+import de.shop.kundenverwaltung.domain.Kunde;
 import de.shop.util.interceptor.Log;
 import de.shop.util.Mock;
 
@@ -56,7 +56,7 @@ public class BestellungServiceImpl implements BestellungService, Serializable {
 	 * {inheritDoc}
 	 */
 	@Override
-	public List<Bestellung> findBestellungenByKunde(AbstractKunde kunde) {
+	public List<Bestellung> findBestellungenByKunde(Kunde kunde) {
 		// TODO Datenbanzugriffsschicht statt Mock
 		return Mock.findBestellungenByKunde(kunde);
 	}
@@ -65,7 +65,7 @@ public class BestellungServiceImpl implements BestellungService, Serializable {
 	 * {inheritDoc}
 	 */
 	@Override
-	public Bestellung createBestellung(Bestellung bestellung, AbstractKunde kunde, Locale locale) {
+	public Bestellung createBestellung(Bestellung bestellung, Kunde kunde, Locale locale) {
 		// TODO Datenbanzugriffsschicht statt Mock
 		bestellung = Mock.createBestellung(bestellung, kunde);
 		event.fire(bestellung);

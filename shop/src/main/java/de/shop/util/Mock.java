@@ -13,11 +13,9 @@ import org.jboss.logging.Logger;
 
 import de.shop.artikelverwaltung.domain.Artikel;
 import de.shop.bestellverwaltung.domain.Bestellung;
-import de.shop.kundenverwaltung.domain.AbstractKunde;
+import de.shop.kundenverwaltung.domain.Kunde;
 import de.shop.kundenverwaltung.domain.Adresse;
-import de.shop.kundenverwaltung.domain.Firmenkunde;
 import de.shop.kundenverwaltung.domain.HobbyType;
-import de.shop.kundenverwaltung.domain.Privatkunde;
 
 /**Emulation der Datenbankzugriffsschicht
  * @author <a href="mailto:oguzhan.atmaca@web.de">Oguzhan Atmaca</a>
@@ -33,12 +31,12 @@ public final class Mock {
 	private static final int MONAT = 0; // bei Calendar werden die Monate von 0 bis 11 gezaehlt
 	private static final int TAG = 31;  // bei Calendar die Monatstage ab 1 gezaehlt
 
-	public static AbstractKunde findKundeById(Long id) {
+	public static Kunde findKundeById(Long id) {
 		if (id > MAX_ID) {
 			return null;
 		}
 		
-		final AbstractKunde kunde = id % 2 == 1 ? new Privatkunde() : new Firmenkunde();
+		final Kunde kunde = new Kunde();
 		kunde.setId(id);
 		kunde.setNachname("Nachname");
 		kunde.setEmail("" + id + "@hska.de");
@@ -52,45 +50,41 @@ public final class Mock {
 		adresse.setOrt("Testort");
 		adresse.setKunde(kunde);
 		kunde.setAdresse(adresse);
-		
-		if (kunde.getClass().equals(Privatkunde.class)) {
-			final Privatkunde privatkunde = (Privatkunde) kunde;
-			final Set<HobbyType> hobbies = new HashSet<>();
-			hobbies.add(HobbyType.LESEN);
-			hobbies.add(HobbyType.REISEN);
-			privatkunde.setHobbies(hobbies);
-		}
+		final Set<HobbyType> hobbies = new HashSet<>();
+		hobbies.add(HobbyType.LESEN);
+		hobbies.add(HobbyType.REISEN);
+		kunde.setHobbies(hobbies);
 		
 		return kunde;
 	}
 
-	public static List<AbstractKunde> findAllKunden() {
+	public static List<Kunde> findAllKunden() {
 		final int anzahl = MAX_KUNDEN;
-		final List<AbstractKunde> kunden = new ArrayList<>(anzahl);
+		final List<Kunde> kunden = new ArrayList<>(anzahl);
 		for (int i = 1; i <= anzahl; i++) {
-			final AbstractKunde kunde = findKundeById(Long.valueOf(i));
+			final Kunde kunde = findKundeById(Long.valueOf(i));
 			kunden.add(kunde);			
 		}
 		return kunden;
 	}
 
-	public static List<AbstractKunde> findKundenByNachname(String nachname) {
+	public static List<Kunde> findKundenByNachname(String nachname) {
 		final int anzahl = nachname.length();
-		final List<AbstractKunde> kunden = new ArrayList<>(anzahl);
+		final List<Kunde> kunden = new ArrayList<>(anzahl);
 		for (int i = 1; i <= anzahl; i++) {
-			final AbstractKunde kunde = findKundeById(Long.valueOf(i));
+			final Kunde kunde = findKundeById(Long.valueOf(i));
 			kunde.setNachname(nachname);
 			kunden.add(kunde);			
 		}
 		return kunden;
 	}
 	
-	public static AbstractKunde findKundeByEmail(String email) {
+	public static Kunde findKundeByEmail(String email) {
 		if (email.startsWith("x")) {
 			return null;
 		}
 		
-		final AbstractKunde kunde = email.length() % 2 == 1 ? new Privatkunde() : new Firmenkunde();
+		final Kunde kunde = new Kunde();
 		kunde.setId(Long.valueOf(email.length()));
 		kunde.setNachname("Nachname");
 		kunde.setEmail(email);
@@ -105,18 +99,17 @@ public final class Mock {
 		adresse.setKunde(kunde);
 		kunde.setAdresse(adresse);
 		
-		if (kunde.getClass().equals(Privatkunde.class)) {
-			final Privatkunde privatkunde = (Privatkunde) kunde;
+		if (kunde.getClass().equals(Kunde.class)) {
 			final Set<HobbyType> hobbies = new HashSet<>();
 			hobbies.add(HobbyType.LESEN);
 			hobbies.add(HobbyType.REISEN);
-			privatkunde.setHobbies(hobbies);
+			kunde.setHobbies(hobbies);
 		}
 		
 		return kunde;
 	}
 	
-	public static List<Bestellung> findBestellungenByKunde(AbstractKunde kunde) {
+	public static List<Bestellung> findBestellungenByKunde(Kunde kunde) {
 		// Beziehungsgeflecht zwischen Kunde und Bestellungen aufbauen
 		final int anzahl = kunde.getId().intValue() % MAX_BESTELLUNGEN + 1;  // 1, 2, 3 oder 4 Bestellungen
 		final List<Bestellung> bestellungen = new ArrayList<>(anzahl);
@@ -135,7 +128,7 @@ public final class Mock {
 			return null;
 		}
 
-		final AbstractKunde kunde = findKundeById(id + 1);  // andere ID fuer den Kunden
+		final Kunde kunde = findKundeById(id + 1);  // andere ID fuer den Kunden
 
 		final Bestellung bestellung = new Bestellung();
 		bestellung.setId(id);
@@ -145,7 +138,7 @@ public final class Mock {
 		return bestellung;
 	}
 
-	public static AbstractKunde createKunde(AbstractKunde kunde) {
+	public static Kunde createKunde(Kunde kunde) {
 		// Neue IDs fuer Kunde und zugehoerige Adresse
 		// Ein neuer Kunde hat auch keine Bestellungen
 		final String nachname = kunde.getNachname();
@@ -159,15 +152,15 @@ public final class Mock {
 		return kunde;
 	}
 
-	public static void updateKunde(AbstractKunde kunde) {
+	public static void updateKunde(Kunde kunde) {
 		LOGGER.infof("Aktualisierter Kunde: %s", kunde);
 	}
 
-	public static void deleteKunde(AbstractKunde kunde) {
+	public static void deleteKunde(Kunde kunde) {
 		LOGGER.infof("Geloeschter Kunde: %s", kunde);
 	}
 
-	public static Bestellung createBestellung(Bestellung bestellung, AbstractKunde kunde) {
+	public static Bestellung createBestellung(Bestellung bestellung, Kunde kunde) {
 		LOGGER.infof("Neue Bestellung: %s fuer Kunde: %s", bestellung, kunde);
 		return bestellung;
 	}

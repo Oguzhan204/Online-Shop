@@ -6,15 +6,16 @@ import java.net.URI;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlTransient;
 
-import de.shop.kundenverwaltung.domain.AbstractKunde;
+import de.shop.kundenverwaltung.domain.Kunde;
 
 /**
  * @author <a href="mailto:oguzhan.atmaca@web.de">Oguzhan Atmaca</a>
  */
 @XmlRootElement
 public class Bestellung implements Serializable {
-	private static final long serialVersionUID = 1618359234119003714L;
-	
+
+	private static final long serialVersionUID = 5549161603734290739L;
+
 	private Long id;
 	
 	private boolean ausgeliefert;
@@ -22,7 +23,7 @@ public class Bestellung implements Serializable {
 	//NICHT @NotNull, weil der Kunde durch den Principal implizit festgelegt ist
 	//NICHT @Valid, weil der Kunde bereits vor der Bestellung existiert
 	@XmlTransient
-	private AbstractKunde kunde;
+	private Kunde kunde;
 	
 	private URI kundeUri;
 	
@@ -38,10 +39,10 @@ public class Bestellung implements Serializable {
 	public void setAusgeliefert(boolean ausgeliefert) {
 		this.ausgeliefert = ausgeliefert;
 	}
-	public AbstractKunde getKunde() {
+	public Kunde getKunde() {
 		return kunde;
 	}
-	public void setKunde(AbstractKunde kunde) {
+	public void setKunde(Kunde kunde) {
 		this.kunde = kunde;
 	}
 	

@@ -14,8 +14,8 @@ import javax.validation.constraints.Digits;
  * @author <a href="mailto:oguzhan.atmaca@web.de">Oguzhan Atmaca</a>
  */
 public class Artikel implements Serializable {
-	private static final long serialVersionUID = 1472129607838538329L;
 	
+	private static final long serialVersionUID = -168724780929765849L;
 	private static final int BEZEICHNUNG_LENGTH_MIN = 2;
 	private static final int BEZEICHNUNG_LENGTH_MAX = 32;
 	private static final String BEZEICHNUNG_PATTERN = "[A-Z\u00C4\u00D6\u00DC][a-z\u00E4\u00F6\u00FC\u00DF]+";
