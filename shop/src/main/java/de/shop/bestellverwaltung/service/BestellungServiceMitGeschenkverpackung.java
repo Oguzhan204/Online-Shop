@@ -17,7 +17,7 @@ import de.shop.bestellverwaltung.domain.Lieferung;
 import de.shop.kundenverwaltung.domain.Kunde;
 
 /**
- * @author <a href="mailto:Juergen.Zimmermann@HS-Karlsruhe.de">J&uuml;rgen Zimmermann</a>
+ * @author <a href="mailto:stal1017@HS-Karlsruhe.de">Alex Stankewitsch</a>
  */
 @Decorator
 @Dependent

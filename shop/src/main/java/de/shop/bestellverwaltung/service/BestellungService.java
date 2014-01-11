@@ -5,6 +5,7 @@ import java.util.List;
 import de.shop.artikelverwaltung.domain.Artikel;
 import de.shop.bestellverwaltung.domain.Bestellung;
 import de.shop.bestellverwaltung.domain.Lieferung;
+import de.shop.bestellverwaltung.service.BestellungService.FetchType;
 import de.shop.kundenverwaltung.domain.Kunde;
 
 
@@ -73,5 +74,7 @@ public interface BestellungService {
 	 * @return Neue Lieferung einschliesslich generierter ID
 	 */
 	Lieferung createLieferung(Lieferung lieferung, List<Bestellung> bestellungen);
+
+	List<Bestellung> findBestellungenByIds(List<Long> ids, FetchType fetch);
 
 }
