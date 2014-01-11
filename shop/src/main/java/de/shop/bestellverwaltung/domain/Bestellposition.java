@@ -2,7 +2,6 @@ package de.shop.bestellverwaltung.domain;
 
 import static de.shop.util.Constants.KEINE_ID;
 
-import java.io.Serializable;
 import java.lang.invoke.MethodHandles;
 import java.net.URI;
 
@@ -24,6 +23,7 @@ import javax.xml.bind.annotation.XmlTransient;
 import org.jboss.logging.Logger;
 
 import de.shop.artikelverwaltung.domain.Artikel;
+import de.shop.util.persistence.AbstractAuditable;
 /**
  * @author <a href="mailto:oguzhan.atmaca@web.de">Oguzhan Atmaca</a>
  */
@@ -38,7 +38,7 @@ import de.shop.artikelverwaltung.domain.Artikel;
    	            	    + " FROM   Artikel a"
    	            	    + " WHERE  a NOT IN (SELECT bp.artikel FROM Bestellposition bp)")
 })
-public class Bestellposition implements Serializable {
+public class Bestellposition extends AbstractAuditable  {
 	private static final long serialVersionUID = 2222771733641950913L;
 	private static final Logger LOGGER = Logger.getLogger(MethodHandles.lookup().lookupClass());
 	

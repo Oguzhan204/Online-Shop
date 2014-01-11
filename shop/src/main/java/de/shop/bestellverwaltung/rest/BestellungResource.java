@@ -9,17 +9,18 @@ import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static javax.ws.rs.core.MediaType.TEXT_XML;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 
-import java.lang.invoke.MethodHandles;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
+import javax.enterprise.context.RequestScoped;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
 import javax.validation.Valid;
+import javax.validation.constraints.NotNull;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -31,8 +32,6 @@ import javax.ws.rs.core.Link;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 
-import org.jboss.logging.Logger;
-
 import de.shop.artikelverwaltung.domain.Artikel;
 import de.shop.artikelverwaltung.rest.ArtikelResource;
 import de.shop.artikelverwaltung.service.ArtikelService;
@@ -42,24 +41,19 @@ import de.shop.bestellverwaltung.service.BestellungService;
 import de.shop.kundenverwaltung.domain.Kunde;
 import de.shop.kundenverwaltung.rest.KundeResource;
 import de.shop.util.interceptor.Log;
-import de.shop.util.rest.NotFoundException;
 import de.shop.util.rest.UriHelper;
 
 
 /**
- * @author <a href="mailto:oguzhan.atmaca@web.de">Oguzhan Atmaca</a>
+ * @author <a href="mailto:Juergen.Zimmermann@HS-Karlsruhe.de">J&uuml;rgen Zimmermann</a>
  */
 @Path("/bestellungen")
 @Produces({APPLICATION_JSON, APPLICATION_XML + ";qs=0.75", TEXT_XML + ";qs=0.5" })
 @Consumes
+@RequestScoped
 @Transactional
 @Log
 public class BestellungResource {
-	private static final Logger LOGGER = Logger.getLogger(MethodHandles.lookup().lookupClass());
-	private static final String NOT_FOUND_ID = "bestellung.notFound.id";
-	private static final String NOT_FOUND_KUNDE_ID = "kunde.notFound.id";
-	private static final String NOT_FOUND_ID_ARTIKEL = "artikel.notFound.id";
-	
 	@Context
 	private UriInfo uriInfo;
 	
@@ -78,16 +72,6 @@ public class BestellungResource {
 	@Inject
 	private UriHelper uriHelper;
 	
-	@PostConstruct
-	private void postConstruct() {
-		LOGGER.debugf("CDI-faehiges Bean %s wurde erzeugt", this);
-	}
-	
-	@PreDestroy
-	private void preDestroy() {
-		LOGGER.debugf("CDI-faehiges Bean %s wird geloescht", this);
-	}
-	
 	/**
 	 * Mit der URL /bestellungen/{id} eine Bestellung ermitteln
 	 * @param id ID der Bestellung
@@ -97,9 +81,6 @@ public class BestellungResource {
 	@Path("{id:[1-9][0-9]*}")
 	public Response findBestellungById(@PathParam("id") Long id) {
 		final Bestellung bestellung = bs.findBestellungById(id, NUR_BESTELLUNG);
-		if (bestellung == null) {
-			throw new NotFoundException(NOT_FOUND_ID, id);
-		}
 
 		// URIs innerhalb der gefundenen Bestellung anpassen
 		setStructuralLinks(bestellung, uriInfo);
@@ -120,7 +101,7 @@ public class BestellungResource {
 		}
 		
 		// URIs fuer Artikel in den Bestellpositionen setzen
-		final List<Bestellposition> bestellpositionen = bestellung.getBestellpositionen();
+		final Collection<Bestellposition> bestellpositionen = bestellung.getBestellpositionen();
 		if (bestellpositionen != null && !bestellpositionen.isEmpty()) {
 			for (Bestellposition bp : bestellpositionen) {
 				final URI artikelUri = artikelResource.getUriArtikel(bp.getArtikel(), uriInfo);
@@ -176,10 +157,6 @@ public class BestellungResource {
 	@Path("{id:[1-9][0-9]*}/kunde")
 	public Response findKundeByBestellungId(@PathParam("id") Long id) {
 		final Kunde kunde = bs.findKundeById(id);
-		if (kunde == null) {
-			throw new NotFoundException(NOT_FOUND_ID, id);
-		}
-
 		kundeResource.setStructuralLinks(kunde, uriInfo);
 		
 		// Link Header setzen
@@ -208,7 +185,7 @@ public class BestellungResource {
 			kundeId = Long.valueOf(kundeIdStr);
 		}
 		catch (NumberFormatException e) {
-			throw new NotFoundException(NOT_FOUND_KUNDE_ID, kundeIdStr);
+			kundeIdInvalid();
 		}
 		
 		// IDs der (persistenten) Artikel ermitteln
@@ -235,31 +212,17 @@ public class BestellungResource {
 		
 		if (artikelIds.isEmpty()) {
 			// keine einzige Artikel-ID als gueltige Zahl
-			String artikelId = null;
-			for (Bestellposition bp : bestellpositionen) {
-				final URI artikelUri = bp.getArtikelUri();
-				if (artikelUri == null) {
-					continue;
-				}
-				final String artikelUriStr = artikelUri.toString();
-				startPos = artikelUriStr.lastIndexOf('/') + 1;
-				artikelId = artikelUriStr.substring(startPos);
-				break;
-			}
-			throw new NotFoundException(NOT_FOUND_ID_ARTIKEL, artikelId);
+			artikelIdsInvalid();
 		}
 
 		final Collection<Artikel> gefundeneArtikel = as.findArtikelByIds(artikelIds);
-		if (gefundeneArtikel.isEmpty()) {
-			throw new NotFoundException(NOT_FOUND_ID_ARTIKEL, artikelIds.get(0));
-		}
 		
 		// Bestellpositionen haben URLs fuer persistente Artikel.
 		// Diese persistenten Artikel wurden in einem DB-Zugriff ermittelt (s.o.)
 		// Fuer jede Bestellposition wird der Artikel passend zur Artikel-URL bzw. Artikel-ID gesetzt.
 		// Bestellpositionen mit nicht-gefundene Artikel werden eliminiert.
 		int i = 0;
-		final List<Bestellposition> neueBestellpositionen = new ArrayList<>(bestellpositionen.size());
+		final Set<Bestellposition> neueBestellpositionen = new HashSet<>();
 		for (Bestellposition bp : bestellpositionen) {
 			// Artikel-ID der aktuellen Bestellposition (s.o.):
 			// artikelIds haben gleiche Reihenfolge wie bestellpositionen
@@ -274,6 +237,14 @@ public class BestellungResource {
 					break;					
 				}
 			}
+			// FIXME JDK 8 hat Lambda-Ausdruecke
+			//final Artikel artikel = gefundeneArtikel.stream()
+			//                                        .filter(a -> a.getId() == artikelId)
+			//                                        .findAny();
+			//if (artikel != null) {
+			//	bp.setArtikel(artikel);
+			//	neueBestellpositionen.add(bp);				
+			//}
 		}
 		bestellung.setBestellpositionen(neueBestellpositionen);
 		
@@ -281,5 +252,24 @@ public class BestellungResource {
 
 		final URI bestellungUri = getUriBestellung(bestellung, uriInfo);
 		return Response.created(bestellungUri).build();
+	}
+	
+	/**
+	 * @NotNull verletzen, um die entsprechende Meldung zu verursachen, weil keine einzige Artikel-ID
+	 *          eine gueltige Zahl war.
+	 * @return null
+	 */
+	@NotNull(message = "{bestellung.artikelIds.invalid}")
+	public List<Long> artikelIdsInvalid() {
+		return null;
+	}
+	
+	/**
+	 * @NotNull verletzen, um die entsprechende Meldung zu verursachen, weil die Kunde-Id ungueltig ist.
+	 * @return null
+	 */
+	@NotNull(message = "{bestellung.kunde.id.invalid}")
+	public Long kundeIdInvalid() {
+		return null;
 	}
 }

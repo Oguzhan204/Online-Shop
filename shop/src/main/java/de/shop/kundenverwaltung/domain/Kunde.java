@@ -5,7 +5,6 @@ import static javax.persistence.CascadeType.PERSIST;
 import static javax.persistence.CascadeType.REMOVE;
 import static javax.persistence.TemporalType.DATE;
 
-import java.io.Serializable;
 import java.lang.invoke.MethodHandles;
 import java.math.BigDecimal;
 import java.net.URI;
@@ -47,13 +46,8 @@ import javax.validation.constraints.Past;
 import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
 import javax.validation.groups.Default;
-import javax.xml.bind.annotation.XmlRootElement;
-import javax.xml.bind.annotation.XmlSeeAlso;
 import javax.xml.bind.annotation.XmlTransient;
 
-import org.codehaus.jackson.annotate.JsonSubTypes;
-import org.codehaus.jackson.annotate.JsonSubTypes.Type;
-import org.codehaus.jackson.annotate.JsonTypeInfo;
 import org.hibernate.validator.constraints.Email;
 import org.hibernate.validator.constraints.ScriptAssert;
 import org.jboss.logging.Logger;
@@ -125,13 +119,13 @@ groups = { Default.class, PasswordGroup.class })
 @NamedEntityGraph(name = Kunde.GRAPH_WARTUNGSVERTRAEGE,
 				  attributeNodes = @NamedAttributeNode("wartungsvertraege"))
 })
-public class Kunde implements Serializable {	
+public class Kunde extends AbstractAuditable {	
 
 	private static final long serialVersionUID = -7781792054449572766L;
 	
 	private static final String NAME_PATTERN = "[A-Z\u00C4\u00D6\u00DC][a-z\u00E4\u00F6\u00FC\u00DF]+";
 	private static final String PREFIX_ADEL = "(o'|von|von der|von und zu|van)?";
-	
+	private static final Logger LOGGER = Logger.getLogger(MethodHandles.lookup().lookupClass());
 	public static final String NACHNAME_PATTERN = PREFIX_ADEL + NAME_PATTERN + "(-" + NAME_PATTERN + ")?";
 	private static final int NACHNAME_LENGTH_MIN = 2;
 	private static final int NACHNAME_LENGTH_MAX = 32;

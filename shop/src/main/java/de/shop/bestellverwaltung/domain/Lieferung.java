@@ -3,68 +3,78 @@ package de.shop.bestellverwaltung.domain;
 import static de.shop.util.Constants.KEINE_ID;
 import static javax.persistence.CascadeType.MERGE;
 import static javax.persistence.CascadeType.PERSIST;
-import static javax.persistence.TemporalType.TIMESTAMP;
 
-import java.io.Serializable;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import javax.persistence.Basic;
 import javax.persistence.Column;
+import javax.persistence.Convert;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.ManyToMany;
+import javax.persistence.NamedAttributeNode;
+import javax.persistence.NamedEntityGraph;
+import javax.persistence.NamedEntityGraphs;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
 import javax.persistence.PostPersist;
-import javax.persistence.PrePersist;
-import javax.persistence.PreUpdate;
-import javax.persistence.Temporal;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlTransient;
 
 import org.hibernate.validator.constraints.NotEmpty;
 import org.jboss.logging.Logger;
+
+import de.shop.util.persistence.AbstractAuditable;
+
+
 /**
- * @author <a href="mailto:oguzhan.atmaca@web.de">Oguzhan Atmaca</a>
+ * @author <a href="mailto:Juergen.Zimmermann@HS-Karlsruhe.de">J&uuml;rgen Zimmermann</a>
  */
+@XmlRootElement
 @Entity
 @NamedQueries({
-	@NamedQuery(name  = Lieferung.FIND_LIEFERUNGEN_BY_LIEFERNR_FETCH_BESTELLUNGEN,
+	@NamedQuery(name  = Lieferung.FIND_LIEFERUNGEN_BY_LIEFERNR,
                 query = "SELECT l"
-                	    + " FROM Lieferung l LEFT JOIN FETCH l.bestellungen"
-			            + " WHERE l.lieferNr LIKE :" + Lieferung.PARAM_LIEFERNR)
+                	    + " FROM Lieferung l"
+			            + " WHERE l.liefernr LIKE :" + Lieferung.PARAM_LIEFERNR)
 })
-@XmlRootElement
-public class Lieferung implements Serializable {
+@NamedEntityGraphs({
+	@NamedEntityGraph(name = Lieferung.GRAPH_BESTELLUNGEN,
+					  attributeNodes = @NamedAttributeNode("bestellungen"))
+})
+public class Lieferung extends AbstractAuditable {
 	private static final long serialVersionUID = 7560752199018702446L;
 	private static final Logger LOGGER = Logger.getLogger(MethodHandles.lookup().lookupClass());
 	
 	private static final int LIEFERNR_LENGTH = 12;
 	
 	private static final String PREFIX = "Lieferung.";
-	public static final String FIND_LIEFERUNGEN_BY_LIEFERNR_FETCH_BESTELLUNGEN =
-		                       PREFIX + "findLieferungenByLieferNrFetchBestellungen";
+	public static final String FIND_LIEFERUNGEN_BY_LIEFERNR = PREFIX + "findLieferungenByLieferNr";
 	public static final String PARAM_LIEFERNR = "lieferNr";
+	
+	public static final String GRAPH_BESTELLUNGEN = PREFIX + "bestellungen";
 
 	@Id
 	@GeneratedValue
-	@Column(nullable = false, updatable = false)
+	@Basic(optional = false)
 	private Long id = KEINE_ID;
 
-	@Column(length = LIEFERNR_LENGTH, unique = true)
-	@NotNull(message = "{lieferung.lieferNr.notNull}")
-	private String lieferNr;
+	@NotNull(message = "{lieferung.liefernr.notNull}")
+	@Size(max = LIEFERNR_LENGTH, message = "{lieferung.liefernr.max}")
+	@Column(unique = true)
+	private String liefernr;
 	
 	@Column(name = "transport_art", length = 3)
+	@Convert(converter = TransportTypeConverter.class)
 	private TransportType transportArt;
 
 	@ManyToMany(mappedBy = "lieferungen", cascade = { PERSIST, MERGE })
@@ -73,40 +83,19 @@ public class Lieferung implements Serializable {
 	@XmlTransient
 	private Set<Bestellung> bestellungen;
 
-	@Basic(optional = false)
-	@Temporal(TIMESTAMP)
-	@XmlTransient
-	private Date erzeugt;
-
-	@Basic(optional = false)
-	@Temporal(TIMESTAMP)
-	@XmlTransient
-	private Date aktualisiert;
-
 	public Lieferung() {
 		super();
 	}
 	
-	public Lieferung(String lieferNr, TransportType transportArt) {
+	public Lieferung(String liefernr, TransportType transportArt) {
 		super();
-		this.lieferNr = lieferNr;
+		this.liefernr = liefernr;
 		this.transportArt = transportArt;
-	}
-
-	@PrePersist
-	private void prePersist() {
-		erzeugt = new Date();
-		aktualisiert = new Date();
 	}
 	
 	@PostPersist
 	private void postPersist() {
 		LOGGER.debugf("Neue Lieferung mit ID=%d", id);
-	}
-	
-	@PreUpdate
-	private void preUpdate() {
-		aktualisiert = new Date();
 	}
 	
 	public Long getId() {
@@ -116,11 +105,11 @@ public class Lieferung implements Serializable {
 		this.id = id;
 	}
 
-	public String getLieferNr() {
-		return lieferNr;
+	public String getLiefernr() {
+		return liefernr;
 	}
-	public void setLieferNr(String lieferNr) {
-		this.lieferNr = lieferNr;
+	public void setLiefernr(String liefernr) {
+		this.liefernr = liefernr;
 	}
 
 	public TransportType getTransportArt() {
@@ -163,30 +152,17 @@ public class Lieferung implements Serializable {
 		this.bestellungen = bestellungen == null ? null : new HashSet<>(bestellungen);
 	}
 
-	public Date getErzeugt() {
-		return erzeugt == null ? null : (Date) erzeugt.clone();
-	}
-	public void setErzeugt(Date erzeugt) {
-		this.erzeugt = erzeugt == null ? null : (Date) erzeugt.clone();
-	}
-	public Date getAktualisiert() {
-		return aktualisiert == null ? null : (Date) aktualisiert.clone();
-	}
-	public void setAktualisiert(Date aktualisiert) {
-		this.aktualisiert = aktualisiert == null ? null : (Date) aktualisiert.clone();
-	}
 	@Override
 	public String toString() {
-		return "Lieferung [id=" + id + ", lieferNr=" + lieferNr + ", transportArt=" + transportArt
-		       + ", erzeugt=" + erzeugt
-		       + ", aktualisiert=" + aktualisiert + ']';
+		return "Lieferung [id=" + id + ", liefernr=" + liefernr + ", transportArt=" + transportArt
+				+ ", " + super.toString() + ']';
 	}
 
 	@Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((lieferNr == null) ? 0 : lieferNr.hashCode());
+		result = prime * result + ((liefernr == null) ? 0 : liefernr.hashCode());
 		return result;
 	}
 
@@ -203,16 +179,15 @@ public class Lieferung implements Serializable {
 		}
 		final Lieferung other = (Lieferung) obj;
 		
-		if (lieferNr == null) {
-			if (other.lieferNr != null) {
+		if (liefernr == null) {
+			if (other.liefernr != null) {
 				return false;
 			}
 		}
-		else if (!lieferNr.equals(other.lieferNr)) {
+		else if (!liefernr.equals(other.liefernr)) {
 			return false;
 		}
 
 		return true;
 	}
 }
-

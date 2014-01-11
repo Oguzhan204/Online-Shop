@@ -1,27 +1,30 @@
 package de.shop.bestellverwaltung.service;
 
 import static de.shop.util.Constants.KEINE_ID;
+import static de.shop.util.Constants.LOADGRAPH;
 
 import java.io.Serializable;
-import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
+import javax.enterprise.context.Dependent;
 import javax.enterprise.event.Event;
 import javax.inject.Inject;
+import javax.persistence.EntityGraph;
 import javax.persistence.EntityManager;
 import javax.persistence.NoResultException;
+import javax.persistence.TypedQuery;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.JoinType;
 import javax.persistence.criteria.Path;
 import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 
-import org.jboss.logging.Logger;
+import com.google.common.collect.ImmutableMap;
 
 import de.shop.artikelverwaltung.domain.Artikel;
 import de.shop.bestellverwaltung.domain.Bestellposition;
@@ -31,14 +34,13 @@ import de.shop.kundenverwaltung.domain.Kunde;
 import de.shop.kundenverwaltung.service.KundeService;
 import de.shop.util.interceptor.Log;
 
-
 /**
- * @author <a href="mailto:oguzhan.atmaca@web.de">Oguzhan Atmaca</a>
+ * @author <a href="mailto:Juergen.Zimmermann@HS-Karlsruhe.de">J&uuml;rgen Zimmermann</a>
  */
+@Dependent
 @Log
 public class BestellungServiceImpl implements Serializable, BestellungService {
 	private static final long serialVersionUID = -9145947650157430928L;
-	private static final Logger LOGGER = Logger.getLogger(MethodHandles.lookup().lookupClass());
 	
 	@Inject
 	private transient EntityManager em;
@@ -50,43 +52,45 @@ public class BestellungServiceImpl implements Serializable, BestellungService {
 	@NeueBestellung
 	private transient Event<Bestellung> event;
 	
-	@PostConstruct
-	private void postConstruct() {
-		LOGGER.debugf("CDI-faehiges Bean %s wurde erzeugt", this);
-	}
-	
-	@PreDestroy
-	private void preDestroy() {
-		LOGGER.debugf("CDI-faehiges Bean %s wird geloescht", this);
-	}
-	
 	/**
 	 * {inheritDoc}
+	 * @exception ConstraintViolationException zu @NotNull, falls keine Bestellung gefunden wurde
 	 */
 	@Override
+	@NotNull(message = "{bestellung.notFound.id}")
 	public Bestellung findBestellungById(Long id, FetchType fetch) {
-		Bestellung bestellung = null;
-		switch (fetch) {
-		case NUR_BESTELLUNG:
-			bestellung = em.find(Bestellung.class, id);
-			break;
-		case MIT_LIEFERUNGEN:
-			try {
-				bestellung = em.createNamedQuery(Bestellung.FIND_BESTELLUNG_BY_ID_FETCH_LIEFERUNGEN, Bestellung.class)
-	                           .setParameter(Bestellung.PARAM_ID, id)
-						       .getSingleResult();
-			}
-			catch (NoResultException e) {
-				bestellung = null;
-			}
+		if (id == null) {
+			return null;
 		}
+		
+		Bestellung bestellung;
+		EntityGraph<?> entityGraph;
+		Map<String, Object> props;
+		switch (fetch) {
+			case NUR_BESTELLUNG:
+				bestellung = em.find(Bestellung.class, id);
+				break;
+				
+			case MIT_LIEFERUNGEN:
+				entityGraph = em.getEntityGraph(Bestellung.GRAPH_LIEFERUNGEN);
+				props = ImmutableMap.of(LOADGRAPH, (Object) entityGraph);
+				bestellung = em.find(Bestellung.class, id, props);
+				break;
+				
+			default:
+				bestellung = em.find(Bestellung.class, id);
+				break;
+		}
+		
 		return bestellung;
 	}
 
 	/**
 	 * {inheritDoc}
+	 * @exception ConstraintViolationException zu @NotNull, falls kein Kunde gefunden wurde
 	 */
 	@Override
+	@NotNull(message = "{bestellung.kunde.notFound.id}")
 	public Kunde findKundeById(Long id) {
 		try {
 			return em.createNamedQuery(Bestellung.FIND_KUNDE_BY_ID, Kunde.class)
@@ -100,8 +104,10 @@ public class BestellungServiceImpl implements Serializable, BestellungService {
 
 	/**
 	 * {inheritDoc}
+	 * @exception ConstraintViolationException zu @Size, falls die Liste leer ist
 	 */
 	@Override
+	@Size(min = 1, message = "{bestellung.notFound.kunde}")
 	public List<Bestellung> findBestellungenByKunde(Kunde kunde) {
 		if (kunde == null) {
 			return Collections.emptyList();
@@ -110,7 +116,47 @@ public class BestellungServiceImpl implements Serializable, BestellungService {
                  .setParameter(Bestellung.PARAM_KUNDE, kunde)
 				 .getResultList();
 	}
+	
+	
+	/**
+	 * {inheritDoc}
+	 * @exception ConstraintViolationException zu @Size, falls die Liste leer ist
+	 */
+	@Override
+	@Size(min = 1, message = "{bestellung.notFound.ids}")
+	public List<Bestellung> findBestellungenByIds(List<Long> ids, FetchType fetch) {
+		if (ids == null || ids.isEmpty()) {
+			return Collections.emptyList();
+		}
+		
+		// SELECT b
+		// FROM   Bestellung b
+		// WHERE  b.id = <id> OR ...
 
+		final CriteriaBuilder builder = em.getCriteriaBuilder();
+		final CriteriaQuery<Bestellung> criteriaQuery  = builder.createQuery(Bestellung.class);
+		final Root<Bestellung> b = criteriaQuery.from(Bestellung.class);
+		
+		// Die Vergleichen mit "=" als Liste aufbauen
+		final Path<Long> idPath = b.get("id");
+		final List<Predicate> predList = new ArrayList<>();
+		for (Long id : ids) {
+			final Predicate equal = builder.equal(idPath, id);
+			predList.add(equal);
+		}
+		// Die Vergleiche mit "=" durch "or" verknuepfen
+		final Predicate[] predArray = new Predicate[predList.size()];
+		final Predicate pred = builder.or(predList.toArray(predArray));
+		criteriaQuery.where(pred).distinct(true);
+
+		final TypedQuery<Bestellung> query = em.createQuery(criteriaQuery);
+		if (FetchType.MIT_LIEFERUNGEN.equals(fetch)) {
+			final EntityGraph<?> entityGraph = em.getEntityGraph(Bestellung.GRAPH_LIEFERUNGEN);
+			query.setHint(LOADGRAPH, entityGraph);
+		}
+				
+		return query.getResultList();
+	}
 
 	/**
 	 * Zuordnung einer neuen, transienten Bestellung zu einem existierenden, persistenten Kunden.
@@ -151,8 +197,10 @@ public class BestellungServiceImpl implements Serializable, BestellungService {
 		bestellung.setId(KEINE_ID);
 		for (Bestellposition bp : bestellung.getBestellpositionen()) {
 			bp.setId(KEINE_ID);
-			LOGGER.tracef("Bestellposition: %s", bp);				
 		}
+		// FIXME JDK 8 hat Lambda-Ausdruecke
+		//bestellung.getBestellpositionen()
+		//          .forEach(bp -> bp.setId(KEINE_ID));
 		
 		em.persist(bestellung);
 		event.fire(bestellung);
@@ -172,12 +220,16 @@ public class BestellungServiceImpl implements Serializable, BestellungService {
 	
 	/**
 	 * {inheritDoc}
+	 * @exception ConstraintViolationException zu @Size, falls die Liste leer ist
 	 */
 	@Override
+	@Size(min = 1, message = "{lieferung.notFound.nr}")
 	public List<Lieferung> findLieferungen(String nr) {
-		return em.createNamedQuery(Lieferung.FIND_LIEFERUNGEN_BY_LIEFERNR_FETCH_BESTELLUNGEN, Lieferung.class)
+		final EntityGraph<?> entityGraph = em.getEntityGraph(Lieferung.GRAPH_BESTELLUNGEN);
+		return em.createNamedQuery(Lieferung.FIND_LIEFERUNGEN_BY_LIEFERNR, Lieferung.class)
                  .setParameter(Lieferung.PARAM_LIEFERNR, nr)
-				 .getResultList();
+                 .setHint(LOADGRAPH, entityGraph)
+                 .getResultList();
 	}
 
 	/**
@@ -196,44 +248,19 @@ public class BestellungServiceImpl implements Serializable, BestellungService {
 		for (Bestellung b : bestellungen) {
 			ids.add(b.getId());
 		}
+		// FIXME JDK 8 hat Lambda-Ausdruecke
+		//bestellungen.forEach(b -> ids.add(b.getId()));
 		
-		bestellungen = findBestellungenByIds(ids);
+		bestellungen = findBestellungenByIds(ids, FetchType.MIT_LIEFERUNGEN);
 		lieferung.setBestellungenAsList(bestellungen);
 		for (Bestellung bestellung : bestellungen) {
 			bestellung.addLieferung(lieferung);
 		}
+		// FIXME JDK 8 hat Lambda-Ausdruecke
+		//bestellungen.forEach(b -> b.addLieferung(lieferung));
 		
 		lieferung.setId(KEINE_ID);
 		em.persist(lieferung);		
 		return lieferung;
-	}
-	
-	private List<Bestellung> findBestellungenByIds(List<Long> ids) {
-		if (ids == null || ids.isEmpty()) {
-			return null;
-		}
-		
-		// SELECT b
-		// FROM   Bestellung b LEFT JOIN FETCH b.lieferungen
-		// WHERE  b.id = <id> OR ...
-
-		final CriteriaBuilder builder = em.getCriteriaBuilder();
-		final CriteriaQuery<Bestellung> criteriaQuery  = builder.createQuery(Bestellung.class);
-		final Root<Bestellung> b = criteriaQuery.from(Bestellung.class);
-		b.fetch("lieferungen", JoinType.LEFT);
-		
-		// Die Vergleichen mit "=" als Liste aufbauen
-		final Path<Long> idPath = b.get("id");
-		final List<Predicate> predList = new ArrayList<>();
-		for (Long id : ids) {
-			final Predicate equal = builder.equal(idPath, id);
-			predList.add(equal);
-		}
-		// Die Vergleiche mit "=" durch "or" verknuepfen
-		final Predicate[] predArray = new Predicate[predList.size()];
-		final Predicate pred = builder.or(predList.toArray(predArray));
-		criteriaQuery.where(pred).distinct(true);
-
-		return em.createQuery(criteriaQuery).getResultList();
 	}
 }
