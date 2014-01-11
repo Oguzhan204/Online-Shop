@@ -9,7 +9,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
 import javax.inject.Qualifier;
-
 /**
  * @author <a href="mailto:oguzhan.atmaca@web.de">Oguzhan Atmaca</a>
  */

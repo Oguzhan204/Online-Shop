@@ -17,6 +17,7 @@ import javax.mail.internet.MimeMessage;
 
 import org.jboss.logging.Logger;
 
+import de.shop.bestellverwaltung.domain.Bestellposition;
 import de.shop.bestellverwaltung.domain.Bestellung;
 import de.shop.kundenverwaltung.domain.Kunde;
 import de.shop.util.interceptor.Log;
@@ -59,8 +60,8 @@ public class BestellungObserver implements Serializable {
 		if (absenderMail == null || empfaengerMail == null) {
 			return;
 		}
-		final String nachname = kunde.getNachname() == null ? "" : kunde.getNachname();
-		final String empfaengerName = nachname + " " + kunde.getNachname();
+		final String vorname = kunde.getVorname() == null ? "" : kunde.getVorname();
+		final String empfaengerName = vorname + " " + kunde.getNachname();
 		
 		final MimeMessage message = new MimeMessage(session);
 
@@ -79,6 +80,9 @@ public class BestellungObserver implements Serializable {
 			// Text setzen mit MIME Type "text/plain"
 			final StringBuilder sb = new StringBuilder(256);
 			sb.append("<h3>Neue Bestellung Nr. <b>" + bestellung.getId() + "</b></h3>" + NEWLINE);
+			for (Bestellposition bp : bestellung.getBestellpositionen()) {
+				sb.append(bp.getAnzahl() + "\t" + bp.getArtikel().getBezeichnung() + "<br/>" + NEWLINE);
+			}
 			final String text = sb.toString();
 			LOGGER.trace(text);
 			message.setContent(text, "text/html;charset=iso-8859-1");
